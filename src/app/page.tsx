@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { parsePDF, ParsedPage } from "@/lib/pdfParser";
 import { buildTree, TreeNode } from "@/lib/treeBuilder";
 import { queryTree } from "@/lib/pageIndexEngine";
-import { loadModel } from "@/lib/llm";
+import { loadModel, askLLM } from "@/lib/llm";
 import { UploadCloud, FileText, Search, Activity, Cpu, Clock, ChevronRight, CheckCircle2 } from "lucide-react";
 
 export default function DocumentIntelligenceApp() {
@@ -16,6 +16,7 @@ export default function DocumentIntelligenceApp() {
   const [question, setQuestion] = useState("");
   const [isAnswering, setIsAnswering] = useState(false);
   const [answer, setAnswer] = useState<TreeNode | null>(null);
+  const [generatedAnswer, setGeneratedAnswer] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<{ latency: number; nodeCount: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +64,7 @@ export default function DocumentIntelligenceApp() {
 
     setIsAnswering(true);
     setAnswer(null);
+    setGeneratedAnswer(null);
     setMetrics(null);
 
     const start = performance.now();
@@ -75,6 +77,13 @@ export default function DocumentIntelligenceApp() {
         latency: end - start,
         nodeCount: countNodes(tree)
       });
+
+      if (result) {
+        // Generation phase
+        const answerPrompt = `Read the following text section:\n\n${result.content}\n\nBased ONLY on this text, answer the user's question: "${question}"`;
+        const genAns = await askLLM(answerPrompt);
+        setGeneratedAnswer(genAns);
+      }
     } catch (err) {
       console.error("Query failed", err);
     } finally {
@@ -220,18 +229,31 @@ export default function DocumentIntelligenceApp() {
           <div className="glass-panel p-8 w-full flex-grow flex flex-col">
             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
               <Cpu className="w-5 h-5 text-cyan-400" />
-              Retrieved Context
+              AI Answer & Retrieved Context
             </h2>
 
             <div className="bg-black/40 rounded-xl border border-white/5 p-6 flex-grow min-h-[250px] overflow-y-auto">
               {!isAnswering && answer ? (
-                <div className="space-y-4">
-                  <div className="inline-flex bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded text-xs font-medium uppercase tracking-wider mb-2">
-                    Page {answer.page || "?"} • {answer.title}
+                <div className="space-y-6">
+                  {generatedAnswer ? (
+                    <div className="bg-purple-500/10 border border-purple-500/20 p-5 rounded-xl">
+                      <h3 className="text-purple-400 text-sm font-semibold uppercase tracking-wider mb-3">Generated Answer</h3>
+                      <p className="text-white leading-relaxed">{generatedAnswer}</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 text-purple-400 animate-pulse">
+                      <Activity className="w-4 h-4 animate-spin" />
+                      <span className="text-sm font-medium">Generating specific answer...</span>
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                    <div className="inline-flex bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded text-xs font-medium uppercase tracking-wider mb-2">
+                      Source Context • Page {answer.page || "?"} • {answer.title}
+                    </div>
+                    <p className="text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">
+                      {answer.content}
+                    </p>
                   </div>
-                  <p className="text-gray-300 leading-relaxed text-sm whitespace-pre-wrap">
-                    {answer.content}
-                  </p>
                 </div>
               ) : !isAnswering && metrics && !answer ? (
                 <div className="text-yellow-500 h-full flex flex-col items-center justify-center">
