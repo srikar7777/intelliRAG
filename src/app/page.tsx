@@ -29,7 +29,9 @@ export default function DocumentIntelligenceApp() {
 
     try {
       setLoadingStep("Loading WebLLM Engine (may take a few minutes)...");
-      await loadModel();
+      await loadModel((info) => {
+        setLoadingStep(info.text || "Loading WebLLM Engine...");
+      });
 
       setLoadingStep("Parsing PDF document...");
       const pages = await parsePDF(uploadedFile);

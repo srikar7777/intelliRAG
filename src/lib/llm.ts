@@ -7,10 +7,15 @@ async function initWebLlm() {
     }
 }
 
-export async function loadModel() {
+export async function loadModel(progressCallback?: (info: any) => void) {
     await initWebLlm();
     if (!engine) {
-        engine = await webllm.CreateMLCEngine("Llama-3.1-8B-Instruct-q4f32_1-MLC", { initProgressCallback: (info: any) => console.log(info) });
+        engine = await webllm.CreateMLCEngine("Llama-3.1-8B-Instruct-q4f32_1-MLC", {
+            initProgressCallback: (info: any) => {
+                console.log(info);
+                if (progressCallback) progressCallback(info);
+            }
+        });
     }
 }
 
