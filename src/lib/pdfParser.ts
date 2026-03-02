@@ -8,8 +8,8 @@ let pdfjsLib: any = null;
 async function initPdfJs() {
     if (!pdfjsLib) {
         pdfjsLib = await import("pdfjs-dist");
-        // Ensure worker is available. This assumes Next.js public/ folder has the worker or we can use Cloudflare CDN.
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        // We use v3.11.174 which is stable and widely hosted on cdnjs
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
     }
 }
 
